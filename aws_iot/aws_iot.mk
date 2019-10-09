@@ -22,9 +22,11 @@
 ############################################################################### 
 NAME := App_AWS_Iot_shadow
 
-$(NAME)_SOURCES := mico_main.c aws_iot_main.c
+$(NAME)_SOURCES := main.c aws_iot_main.c
 
 $(NAME)_COMPONENTS := lib_aws_iot
 
+$(NAME)_COMPONENTS += wolfSSL
 
+BUILD_MXOS := 1
 

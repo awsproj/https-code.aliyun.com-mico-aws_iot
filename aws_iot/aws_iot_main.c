@@ -1,5 +1,5 @@
-#include "mico_rtos.h"
-#include "debug.h"
+#include "mxos.h"
+#include "mdebug.h"
 #include "aws_iot_config.h"
 #include "aws_iot_shadow_interface.h"
 
@@ -31,7 +31,7 @@
  * @note Ensure the buffer sizes in aws_iot_config.h are big enough to receive the delta message. The delta message will also contain the metadata with the timestamps
  */
 
-#define iot_log(M, ...) custom_log("iot", M, ##__VA_ARGS__)
+#define iot_log(M, ...)       MXOS_LOG(CONFIG_APP_DEBUG, "iot", M, ##__VA_ARGS__)
 
 
 static bool messageArrivedOnDelta = false;
@@ -44,16 +44,18 @@ static char stringToEchoDelta[SHADOW_MAX_SIZE_OF_RX_BUFFER];
 
 char *mqtt_client_id_get( char clientid[30] )
 {
+#if 0
     uint8_t mac[6];
     char mac_str[13];
 
-    mico_wlan_get_mac_address( mac );
+    mwifi_get_mac( mac );
     sprintf( mac_str, "%02X%02X%02X%02X%02X%02X",
              mac[0],
              mac[1], mac[2], mac[3], mac[4], mac[5] );
     sprintf( clientid, "MiCO_%s", mac_str );
-
-    return clientid;
+#else
+    return AWS_IOT_MQTT_CLIENT_ID;
+#endif
 }
 /**
  * @brief This function builds a full Shadow expected JSON document by putting the data in the reported section
@@ -111,7 +113,7 @@ void UpdateStatusCallback(const char *pThingName, ShadowActions_t action, Shadow
     }
 }
 
-static void aws_iot_shadow_main( mico_thread_arg_t arg )
+static void aws_iot_shadow_main( )
 {
     IoT_Error_t rc = MQTT_FAILURE;
 
@@ -180,7 +182,7 @@ RECONN:
         rc = aws_iot_shadow_yield(&mqttClient, 100);
 
         if (NETWORK_ATTEMPTING_RECONNECT == rc) {
-            mico_rtos_thread_sleep(1);
+            sleep(1);
             // If the client is attempting to reconnect we will skip the rest of the loop.
             continue;
         }else if( NETWORK_RECONNECTED == rc ){
@@ -194,7 +196,7 @@ RECONN:
         }
 
         // sleep for some time in seconds
-        mico_rtos_thread_sleep(1);
+        sleep(1);
     }
 
     if (MQTT_SUCCESS != rc) {
@@ -211,12 +213,12 @@ RECONN:
     }
 
 exit:
-    mico_rtos_delete_thread(NULL);
+    mos_thread_delete(NULL);
 }
 
-OSStatus start_aws_iot_shadow( void )
+merr_t start_aws_iot_shadow( void )
 {
-    return mico_rtos_create_thread( NULL, MICO_APPLICATION_PRIORITY, "aws shadow", aws_iot_shadow_main,
+    return mos_thread_new( MOS_APPLICATION_PRIORITY, "aws shadow", aws_iot_shadow_main,
                                         0x3000,
                                         0 );
 }
